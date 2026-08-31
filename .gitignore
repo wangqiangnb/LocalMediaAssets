@@ -1,0 +1,18 @@
+# 构建产物
+bin/
+obj/
+
+# 本机配置（含个人路径，不入库）
+jellyfin.path.txt
+.dotnet-cli/
+.nuget/
+.tmp/
+.appdata/
+.localappdata/
+
+# IDE
+.vs/
+.idea/
+*.user
+
+.ssh/
