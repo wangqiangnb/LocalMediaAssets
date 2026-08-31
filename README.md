@@ -24,18 +24,33 @@
 
 ---
 
+## 📥 下载插件
+
+**普通用户推荐直接从 GitHub Releases 下载编译好的文件**（不需要自己编译代码）：
+
+1. 打开 Releases 页面：`https://github.com/wangqiangnb/LocalMediaAssets/releases`
+2. 找到最新版本（如 `v0.9.0.0`），下载附件 `LocalMediaAssets_v0.9.0.0.zip`
+3. 解压得到 `Jellyfin.Plugin.LocalMediaAssets.dll`（压缩包内还附有 `安装说明.txt` 和 `README.md`）
+
+> 想自己编译的开发者见文末「🛠️ 开发者：编译」。
+
+---
+
 ## 🚀 快速开始（5 分钟上手）
 
 ### 第 1 步：安装插件
 
-1. **停止** Jellyfin（任务栏托盘图标退出，或任务管理器结束 `jellyfin.exe`）
-2. 找到 Jellyfin 的插件目录：
+1. 按上方「📥 下载插件」下载并解压，得到 `Jellyfin.Plugin.LocalMediaAssets.dll`
+2. **停止** Jellyfin（任务栏托盘图标退出，或任务管理器结束 `jellyfin.exe`）
+3. 找到 Jellyfin 的插件目录：
    - Windows：`C:\Users\<你的用户名>\AppData\Local\jellyfin\plugins\`
    - Docker/Linux：`<配置目录>/plugins/`
-3. 在里面新建文件夹 `LocalMediaAssets`，把 `Jellyfin.Plugin.LocalMediaAssets.dll` 放进去
-4. **启动** Jellyfin
+4. 在里面新建文件夹 `LocalMediaAssets`，把 `Jellyfin.Plugin.LocalMediaAssets.dll` 放进去
+5. **启动** Jellyfin
 
 > 无需修改任何 Jellyfin 文件。插件启动时会自动完成所有设置。
+
+> 升级版本：下载新版本 zip，用新的 DLL 覆盖旧文件后重启 Jellyfin 即可，设置自动保留。
 
 ### 第 2 步：打开设置页
 
@@ -170,6 +185,8 @@ A：设置页对普通用户只显示「我的显示偏好」；管理员设置�
 ---
 
 ## 🛠️ 开发者：编译
+
+> 普通用户不需要编译：直接从上方「📥 下载插件」获取编译好的 DLL 即可。以下仅供开发者参考。
 
 环境：.NET SDK 9.x。
 
