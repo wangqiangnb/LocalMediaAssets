@@ -36,51 +36,39 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+        _logger = logger;
+        _applicationPaths = applicationPaths;
 
-        // 启动时确保 jellyfin-web/index.html 已注入剧照脚本（幂等；Jellyfin 升级后自动恢复）
+        // 启动时确保 jellyfin-web/index.html 已注入详情页优化脚本（幂等、带标记可精确移除）
         WebPatch.EnsureApplied(serverConfigurationManager.ApplicationPaths, logger);
-
-        // 启动时自动把插件自身注册为存储库（无需用户操作）：
-        // 使插件详情页正常显示「设置」按钮、消除"从存储库获取插件详情时发生错误"的警告，
-        // 并保证换机器后把 DLL 放进插件目录即功能完整。
-        EnsureRepositoryRegistered(serverConfigurationManager, applicationHost.HttpPort, logger);
     }
 
-    private void EnsureRepositoryRegistered(IServerConfigurationManager configManager, int httpPort, Microsoft.Extensions.Logging.ILogger logger)
+    private readonly Microsoft.Extensions.Logging.ILogger<Plugin> _logger;
+    private readonly IApplicationPaths _applicationPaths;
+
+    /// <summary>
+    /// 卸载插件时：精确移除注入在 jellyfin-web/index.html 中的脚本行，不影响其他插件对该文件的修改。
+    /// </summary>
+    public override void OnUninstalling()
     {
         try
         {
-            var repoUrl = $"http://localhost:{httpPort}/LocalMediaAssets/repository.json";
-
-            var repos = configManager.Configuration.PluginRepositories ?? [];
-            if (repos.Any(r => string.Equals(r.Url, repoUrl, StringComparison.OrdinalIgnoreCase)))
-            {
-                return;
-            }
-
-            var list = repos.ToList();
-            list.Add(new RepositoryInfo
-            {
-                Name = "LocalMediaAssets",
-                Url = repoUrl,
-                Enabled = true
-            });
-            configManager.Configuration.PluginRepositories = list.ToArray();
-            configManager.SaveConfiguration();
-
-            logger.LogInformation("LocalMediaAssets：已自动注册插件存储库 {Url}", repoUrl);
+            var index = Path.Combine(_applicationPaths.WebPath, "index.html");
+            WebPatch.Restore(index, _logger);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "LocalMediaAssets：自动注册插件存储库失败");
+            _logger.LogWarning(ex, "LocalMediaAssets：卸载时移除 Web 脚本失败");
         }
+
+        base.OnUninstalling();
     }
 
     /// <inheritdoc />
     public override string Name => "LocalMediaAssets";
 
     /// <inheritdoc />
-    public override string Description => "本地化媒体素材：演员照片/简介跟随媒体文件，详情页展示预览图与预告片，支持演员库同步与 NFO 补写，换机器无需重新刮削。";
+    public override string Description => "Jellyfin 演员界面优化与预览图优化。项目主页：https://github.com/wangqiangnb/LocalMediaAssets";
 
     /// <summary>
     /// Gets the current plugin instance.

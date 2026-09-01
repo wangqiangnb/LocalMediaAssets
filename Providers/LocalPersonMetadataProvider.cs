@@ -39,7 +39,7 @@ public sealed class LocalPersonMetadataProvider : ILocalMetadataProvider<Person>
         var result = new MetadataResult<Person>();
 
         var config = Plugin.Instance?.Configuration;
-        if (config is null || !config.EnableActorMetadata)
+        if (config is null)
         {
             return Task.FromResult(result);
         }

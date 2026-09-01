@@ -74,10 +74,13 @@ public sealed class UserSettingsManager
     {
         if (_dir.Length == 0)
         {
-            var baseDir = Plugin.Instance?.DataFolderPath;
-            _dir = string.IsNullOrEmpty(baseDir)
+            // 与 PersonImageIndexer 同理：不能使用 DataFolderPath，否则会在 plugins 下
+            // 创建与插件目录名不同的数据目录，被 Jellyfin 误认为第二个插件（影子插件），
+            // 导致设置页启用/禁用按钮错乱。改放插件程序集所在目录的 usersettings/ 子目录。
+            var pluginDir = Path.GetDirectoryName(typeof(UserSettingsManager).Assembly.Location);
+            _dir = string.IsNullOrEmpty(pluginDir)
                 ? Path.Combine(Path.GetTempPath(), "lma-usersettings")
-                : Path.Combine(baseDir, "usersettings");
+                : Path.Combine(pluginDir, "usersettings");
         }
 
         return _dir;

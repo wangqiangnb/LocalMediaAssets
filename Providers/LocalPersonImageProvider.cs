@@ -44,7 +44,7 @@ public sealed class LocalPersonImageProvider : ILocalImageProvider, IHasOrder
         }
 
         var config = Plugin.Instance?.Configuration;
-        if (config is null || !config.EnableActorImages)
+        if (config is null)
         {
             yield break;
         }
