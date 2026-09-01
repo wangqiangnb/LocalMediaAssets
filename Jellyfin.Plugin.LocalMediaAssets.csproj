@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Jellyfin.Plugin.LocalMediaAssets</RootNamespace>
+    <AssemblyName>Jellyfin.Plugin.LocalMediaAssets</AssemblyName>
+    <Version>0.9.0.0</Version>
+    <FileVersion>0.9.0.0</FileVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!-- Jellyfin 安装目录：默认指向本目录同级的 jellyfin 文件夹。
+         可设置环境变量 JellyfinInstallDir 覆盖（个人路径请放在 jellyfin.path.txt，不入库）。 -->
+    <JellyfinInstallDir Condition="'$(JellyfinInstallDir)' == ''">$(MSBuildThisFileDirectory)..\jellyfin</JellyfinInstallDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ConfigurationPage\configPage.html" />
+    <EmbeddedResource Include="web\configPage.html" />
+    <EmbeddedResource Include="web\verifyPage.html" />
+    <EmbeddedResource Include="web\localmediaassets-stills.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 直接引用 Jellyfin 安装目录中的程序集，保证 API 与运行时完全匹配 -->
+    <Reference Include="MediaBrowser.Common">
+      <HintPath>$(JellyfinInstallDir)\MediaBrowser.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Controller">
+      <HintPath>$(JellyfinInstallDir)\MediaBrowser.Controller.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Model">
+      <HintPath>$(JellyfinInstallDir)\MediaBrowser.Model.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Jellyfin.Data">
+      <HintPath>$(JellyfinInstallDir)\Jellyfin.Data.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNetCore.Mvc.Core">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.AspNetCore.Mvc.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNetCore.Mvc.Abstractions">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.AspNetCore.Mvc.Abstractions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNetCore.Authorization">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.AspNetCore.Authorization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Net.Http.Headers">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.Net.Http.Headers.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNetCore.Http.Abstractions">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.AspNetCore.Http.Abstractions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNetCore.Http.Features">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.AspNetCore.Http.Features.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Primitives">
+      <HintPath>$(JellyfinInstallDir)\Microsoft.Extensions.Primitives.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

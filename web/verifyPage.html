@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LocalMediaAssets 剧照管线验证页</title>
+<style>
+  body { font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif; background: #222; color: #eee; padding: 20px; }
+  h2 { margin-top: 0; }
+  code { background: #333; padding: 1px 5px; border-radius: 3px; }
+  #castCollapsible { border: 2px solid #e55; padding: 10px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<h2>LocalMediaAssets 剧照管线验证页</h2>
+<p>此页面模拟 Jellyfin 详情页环境（含演员区 <code>#castCollapsible</code>）。</p>
+<p>用法：<code>/LocalMediaAssets/verify?itemId=&lt;你的条目ID&gt;</code></p>
+<p style="color:#bbb">如何获取条目 ID：打开任意电影/剧集的详情页，浏览器地址栏 URL 形如
+<code>…#/details?id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>，把 <code>id=</code> 后面那串复制到本页
+<code>?itemId=</code> 参数后，例如 <code>/LocalMediaAssets/verify?itemId=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>。</p>
+<p id="status" style="color:#ffa726;font-weight:600;">请先补充 itemId 参数。</p>
+<p>正常结果：下方红色框【模拟演员区】<b>上方</b>出现「预览图与视频」区 → 说明「脚本 → API → 渲染」整条链路正常。</p>
+<div id="castCollapsible">【模拟演员区】</div>
+<script>
+  var params = new URLSearchParams(location.search);
+  var itemId = params.get('itemId');
+  if (itemId) {
+    location.hash = '#/details?id=' + itemId;
+  } else {
+    document.getElementById('status').textContent = '请在地址后加 ?itemId=<你的条目ID> 再刷新本页。';
+  }
+</script>
+<script src="/LocalMediaAssets/stillsJs"></script>
+</body>
+</html>
