@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LocalMediaAssets · Actor</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+    margin: 0; padding: 0; background: #141517; color: #ddd; min-height: 100vh;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 20px; background: rgba(20,21,23,.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .topbar a { color: #00a4dc; font-size: 14px; text-decoration: none; }
+  .topbar a:hover { text-decoration: underline; }
+  .btn-retry {
+    margin-left: auto; padding: 7px 16px; background: #00a4dc; color: #fff; border: 0;
+    border-radius: 6px; font-size: 13px; cursor: pointer;
+  }
+  .btn-retry:disabled { opacity: .5; cursor: wait; }
+
+  .container { max-width: 980px; margin: 0 auto; padding: 20px 20px 60px; }
+
+  /* ---------- 头部：照片 + 基本信息 ---------- */
+  .actor-header { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .photo-box { flex: 0 0 220px; }
+  .main-photo {
+    width: 220px; height: 220px; border-radius: 50%; border: 3px solid #fff;
+    object-fit: cover; background: #202020; box-shadow: 0 0 28px 10px rgba(76,175,80,.3);
+  }
+  .photo-strip {
+    display: flex; gap: 8px; margin-top: 12px; justify-content: center;
+    flex-wrap: wrap;
+  }
+  .photo-thumb {
+    width: 52px; height: 52px; border-radius: 8px; object-fit: cover; cursor: pointer;
+    border: 2px solid transparent; opacity: .75; transition: all .2s ease;
+  }
+  .photo-thumb:hover, .photo-thumb.active { border-color: #00a4dc; opacity: 1; }
+
+  .actor-info { flex: 1; min-width: 260px; }
+  h1 { font-size: 30px; margin: 0 0 6px; line-height: 1.3; }
+  .meta-line { display: flex; flex-wrap: wrap; gap: 8px 18px; color: #aaa; font-size: 14px; margin: 6px 0 14px; }
+  .meta-line .chip {
+    background: #26272b; border: 1px solid #34363b; border-radius: 14px;
+    padding: 3px 12px; font-size: 12.5px; color: #c8c8cc;
+  }
+  .meta-line .chip b { color: #eee; font-weight: 600; }
+
+  .section-title {
+    font-size: 19px; font-weight: 600; color: #eee; margin: 34px 0 14px;
+    padding-bottom: 8px; border-bottom: 1px solid #2a2a2a;
+  }
+  .overview {
+    font-size: 14.5px; line-height: 1.95; color: #ccc; white-space: pre-wrap;
+    background: #1b1c1f; border: 1px solid #282a2e; border-radius: 10px; padding: 18px 20px;
+  }
+  .no-overview { color: #888; font-style: italic; }
+
+  /* ---------- 全部照片网格（管理） ---------- */
+  .photo-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .photo-item {
+    position: relative; border-radius: 10px; overflow: hidden;
+    background: #202020; border: 1px solid #2e3035;
+  }
+  .photo-item img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; }
+  .photo-item .default-badge {
+    position: absolute; top: 8px; left: 8px; background: rgba(76,175,80,.92);
+    color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  }
+  .photo-item .photo-actions {
+    display: flex; gap: 6px; padding: 7px; background: #17181b;
+  }
+  .photo-item .photo-actions button {
+    flex: 1; padding: 6px 0; font-size: 12px; border: 0; border-radius: 5px;
+    cursor: pointer; color: #fff;
+  }
+  .btn-default { background: #00a4dc; }
+  .btn-default:hover { background: #0fb6ef; }
+  .btn-delete { background: #b3403a; }
+  .btn-delete:hover { background: #cc4a42; }
+  .btn-default:disabled, .btn-delete:disabled { opacity: .45; cursor: wait; }
+  .no-photos { color: #888; font-style: italic; }
+  .photo-grid-hint { font-size: 12px; color: #888; margin: -6px 0 12px; }
+
+  /* ---------- 参演作品网格 ---------- */
+  .appearance-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+  }
+  .appearance-card {
+    display: block; text-decoration: none; color: inherit; cursor: pointer;
+    transition: transform .25s ease;
+  }
+  .appearance-card:hover { transform: translateY(-4px); }
+  .appearance-poster {
+    width: 100%; aspect-ratio: 2/3; border-radius: 8px; object-fit: cover;
+    background: #202020; border: 1px solid #2e3035; display: block;
+  }
+  .appearance-name {
+    font-size: 13.5px; color: #e8e8ea; margin-top: 7px;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;
+  }
+  .appearance-year { font-size: 12px; color: #888; margin-top: 3px; }
+  .appearance-type {
+    display: inline-block; font-size: 10.5px; color: #00a4dc; border: 1px solid #2c6a83;
+    border-radius: 4px; padding: 0 6px; margin-top: 4px;
+  }
+
+  .empty { color: #999; font-size: 15px; margin-top: 40px; text-align: center; line-height: 2; }
+  .empty .big { font-size: 44px; display: block; margin-bottom: 10px; }
+  #status { margin-top: 18px; font-size: 13px; min-height: 18px; color: #888; }
+  .spin {
+    display: inline-block; width: 22px; height: 22px; margin-right: 8px; vertical-align: middle;
+    border: 3px solid #444; border-top-color: #00a4dc; border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 640px) {
+    .actor-header { justify-content: center; text-align: center; }
+    .photo-box { flex-basis: 160px; }
+    .main-photo { width: 160px; height: 160px; }
+    .meta-line { justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="javascript:void(0)" id="btnBack">← 返回</a>
+  <button class="btn-retry" id="btnRefresh" style="display:none">重新刷新</button>
+</div>
+
+<div class="container">
+  <div id="content">
+    <div class="empty"><span class="big">👤</span>加载中…</div>
+  </div>
+  <div id="status"></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    function qs(name) {
+        var m = location.search.match(new RegExp('[?&]' + name + '=([^&]+)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function getToken() {
+        try {
+            var raw = localStorage.getItem('jellyfin_credentials');
+            if (!raw) return null;
+            var data = JSON.parse(raw);
+            var servers = data && (data.Servers || []);
+            for (var i = 0; i < servers.length; i++) {
+                var token = servers[i] && (servers[i].AccessToken || servers[i].accessToken);
+                if (token) return token;
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // 兼容 API 返回的 PascalCase / camelCase
+    function prop(obj, name) {
+        if (obj == null) return undefined;
+        if (obj[name] !== undefined) return obj[name];
+        var lower = name.charAt(0).toLowerCase() + name.slice(1);
+        if (obj[lower] !== undefined) return obj[lower];
+        var upper = name.charAt(0).toUpperCase() + name.slice(1);
+        return obj[upper];
+    }
+
+    var name = qs('name');
+    var content = document.getElementById('content');
+    var statusEl = document.getElementById('status');
+    var btnRefresh = document.getElementById('btnRefresh');
+    var currentPhoto = 0;
+
+    var I18N = {
+        zh: {
+            noData: '暂无本地演员信息',
+            hint: '可返回详情页点击红色卡片触发刷新',
+            noOverview: '暂无简介',
+            birth: '出生',
+            year: '出道年份',
+            rating: '评分',
+            photos: '全部照片',
+            photosHint: '第一张为默认照片（详情页演员卡片与 Jellyfin 使用）；可设置默认或删除。',
+            defaultBadge: '默认',
+            setDefault: '设为默认',
+            delete: '删除',
+            setting: '设置中…',
+            deleting: '删除中…',
+            noPhotos: '暂无本地照片',
+            appearances: '参演作品',
+            noAppearances: '库中暂无该演员的作品',
+            loading: '正在读取本地演员信息…',
+            fail: '读取失败',
+            refresh: '重新刷新',
+            refreshing: '刷新中…',
+            movie: '电影', series: '剧集', episode: '单集',
+            needLogin: '需要登录后才能管理照片'
+        },
+        en: {
+            noData: 'No local actor data',
+            hint: 'Go back and click a red card to trigger refresh',
+            noOverview: 'No overview available',
+            birth: 'Born',
+            year: 'Debut year',
+            rating: 'Rating',
+            photos: 'All Photos',
+            photosHint: 'The first photo is the default (used by cast cards and Jellyfin); set default or delete here.',
+            defaultBadge: 'Default',
+            setDefault: 'Set Default',
+            delete: 'Delete',
+            setting: 'Setting…',
+            deleting: 'Deleting…',
+            noPhotos: 'No local photos',
+            appearances: 'Appearances',
+            noAppearances: 'No appearances found in library',
+            loading: 'Loading local actor info…',
+            fail: 'Load failed',
+            refresh: 'Refresh',
+            refreshing: 'Refreshing…',
+            movie: 'Movie', series: 'Series', episode: 'Episode',
+            needLogin: 'Login required to manage photos'
+        }
+    };
+    function t(key) { return (I18N.zh)[key]; }
+
+    function fmtDate(v) {
+        if (!v) return '';
+        var s = String(v);
+        return s.slice(0, 10); // YYYY-MM-DD
+    }
+
+    // 从照片 URL 中解析文件名（/Actor/Image?name=xx&file=yy → yy）
+    function photoFileName(url) {
+        var m = String(url || '').match(/[?&]file=([^&]+)/);
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+
+    function photoOperation(endpoint, file) {
+        var token = getToken();
+        if (!token) {
+            statusEl.textContent = t('needLogin');
+            return Promise.reject(new Error('no token'));
+        }
+
+        return fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'MediaBrowser Token="' + token + '"'
+            },
+            body: JSON.stringify({ name: name, file: file })
+        }).then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r;
+        });
+    }
+
+    function render(data) {
+        var photoUrl = prop(data, 'photoUrl') || prop(data, 'avatarUrl') ||
+            ('/LocalMediaAssets/Actor/Image?name=' + encodeURIComponent(name || ''));
+        var photos = prop(data, 'photos') || [];
+        if (!photos.length) photos = [photoUrl];
+        var overview = prop(data, 'overview') || '';
+        var premiereDate = fmtDate(prop(data, 'premiereDate'));
+        var productionYear = prop(data, 'productionYear');
+        var rating = prop(data, 'communityRating');
+        var appearances = prop(data, 'appearances') || [];
+        var defaultPhotoFile = prop(data, 'defaultPhotoFile');
+
+        var chips = '';
+        if (premiereDate) chips += '<span class="chip">' + esc(t('birth')) + ' <b>' + esc(premiereDate) + '</b></span>';
+        if (productionYear) chips += '<span class="chip">' + esc(t('year')) + ' <b>' + esc(productionYear) + '</b></span>';
+        if (rating) chips += '<span class="chip">' + esc(t('rating')) + ' <b>★ ' + Number(rating).toFixed(1) + '</b></span>';
+
+        // 全部照片网格（管理：设默认/删除）
+        var photosHtml = '';
+        if (photos.length) {
+            photosHtml = '<div class="photo-grid">';
+            for (var i = 0; i < photos.length; i++) {
+                var fname = photoFileName(photos[i]) || ('photo_' + (i + 1));
+                var isDefault = fname === defaultPhotoFile;
+                photosHtml += '<div class="photo-item" data-file="' + esc(fname) + '">' +
+                    '<img src="' + esc(photos[i]) + '" alt="' + esc(fname) + '" loading="lazy" />' +
+                    (isDefault ? '<span class="default-badge">' + esc(t('defaultBadge')) + '</span>' : '') +
+                    '<div class="photo-actions">' +
+                    (isDefault
+                        ? '<button class="btn-default" disabled>✓ ' + esc(t('defaultBadge')) + '</button>'
+                        : '<button class="btn-default">' + esc(t('setDefault')) + '</button>') +
+                    (isDefault
+                        ? '<button class="btn-delete" disabled>—</button>'
+                        : '<button class="btn-delete">' + esc(t('delete')) + '</button>') +
+                    '</div></div>';
+            }
+            photosHtml += '</div>';
+        } else {
+            photosHtml = '<div class="no-photos">' + esc(t('noPhotos')) + '</div>';
+        }
+
+        var appearancesHtml = '';
+        if (appearances.length) {
+            appearancesHtml = '<div class="appearance-grid">';
+            for (var a = 0; a < appearances.length; a++) {
+                var ap = appearances[a];
+                var apName = prop(ap, 'name') || '';
+                var apYear = prop(ap, 'productionYear');
+                var apType = prop(ap, 'type');
+                var apId = prop(ap, 'id');
+                var apPoster = prop(ap, 'posterUrl');
+                var typeLabel = apType === 'Movie' ? t('movie') : apType === 'Series' ? t('series') : t('episode');
+                // 点击跳转 Jellyfin 原生详情页
+                var link = '/web/index.html#!/details?id=' + encodeURIComponent(apId);
+                appearancesHtml += '<a class="appearance-card" href="' + esc(link) + '">' +
+                    '<img class="appearance-poster" src="' + esc(apPoster) + '" alt="' + esc(apName) + '" loading="lazy" ' +
+                    'onerror="this.style.opacity=.15;" />' +
+                    '<div class="appearance-name">' + esc(apName) + '</div>' +
+                    (apYear ? '<div class="appearance-year">' + esc(apYear) + '</div>' : '') +
+                    '<span class="appearance-type">' + esc(typeLabel) + '</span>' +
+                    '</a>';
+            }
+            appearancesHtml += '</div>';
+        } else {
+            appearancesHtml = '<div class="no-overview">' + esc(t('noAppearances')) + '</div>';
+        }
+
+        // 有哪部分显示哪部分：无简介不显示简介区；照片墙只要有照片就显示（含管理按钮）
+        var overviewHtml = overview ? '<div class="overview">' + esc(overview) + '</div>' : '';
+        var photosSection = photos.length > 0
+            ? '<div class="section-title">' + esc(t('photos')) + '</div>' +
+              (photos.length > 1 ? '<div class="photo-grid-hint">' + esc(t('photosHint')) + '</div>' : '') +
+              photosHtml
+            : '';
+        var appearancesSection = appearances.length
+            ? '<div class="section-title">' + esc(t('appearances')) + '</div>' + appearancesHtml
+            : '';
+
+        var html =
+            '<div class="actor-header">' +
+            '  <div class="photo-box">' +
+            '    <img class="main-photo" src="' + esc(photos[0]) + '" alt="' + esc(name || '') + '" />' +
+            '  </div>' +
+            '  <div class="actor-info">' +
+            '    <h1>' + esc(name || '') + '</h1>' +
+            (chips ? '<div class="meta-line">' + chips + '</div>' : '') +
+            overviewHtml +
+            '  </div>' +
+            '</div>' +
+            photosSection +
+            appearancesSection;
+
+        content.innerHTML = html;
+
+        // 照片操作：设默认 / 删除
+        var items = content.querySelectorAll('.photo-item');
+        for (var pi = 0; pi < items.length; pi++) {
+            (function (item) {
+                var fname = item.getAttribute('data-file');
+                var btnDefault = item.querySelector('.btn-default');
+                var btnDelete = item.querySelector('.btn-delete');
+                if (btnDefault && !btnDefault.disabled) {
+                    btnDefault.addEventListener('click', function () {
+                        btnDefault.disabled = true;
+                        btnDefault.textContent = t('setting');
+                        photoOperation('/LocalMediaAssets/Actor/Photos/Default', fname)
+                            .then(function () { load(); })
+                            .catch(function (e) {
+                                statusEl.textContent = t('fail') + ': ' + e.message;
+                                btnDefault.disabled = false;
+                                btnDefault.textContent = t('setDefault');
+                            });
+                    });
+                }
+                if (btnDelete && !btnDelete.disabled) {
+                    btnDelete.addEventListener('click', function () {
+                        btnDelete.disabled = true;
+                        btnDelete.textContent = t('deleting');
+                        photoOperation('/LocalMediaAssets/Actor/Photos/Delete', fname)
+                            .then(function () { load(); })
+                            .catch(function (e) {
+                                statusEl.textContent = t('fail') + ': ' + e.message;
+                                btnDelete.disabled = false;
+                                btnDelete.textContent = t('delete');
+                            });
+                    });
+                }
+            })(items[pi]);
+        }
+    }
+
+    function load() {
+        if (!name) {
+            content.innerHTML = '<div class="empty"><span class="big">⚠️</span>缺少演员名参数</div>';
+            return;
+        }
+
+        statusEl.innerHTML = '<span class="spin"></span>' + esc(t('loading'));
+        // 来源影片 id（可选）：详情页"参演作品"只显示库中其他作品（排除当前这部）
+        var from = qs('from');
+        var detailUrl = '/LocalMediaAssets/Actor/Detail?name=' + encodeURIComponent(name);
+        if (from) detailUrl += '&from=' + encodeURIComponent(from);
+        fetch(detailUrl)
+            .then(function (r) {
+                if (r.status === 404) {
+                    content.innerHTML = '<div class="empty"><span class="big">🙈</span>' + esc(t('noData')) +
+                        '<br>' + esc(t('hint')) + '</div>';
+                    statusEl.textContent = '';
+                    btnRefresh.style.display = 'inline-block';
+                    return null;
+                }
+                if (r.status === 503) {
+                    content.innerHTML = '<div class="empty"><span class="big">🚫</span>插件已禁用</div>';
+                    statusEl.textContent = '';
+                    return null;
+                }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data) return;
+                render(data);
+                statusEl.textContent = '';
+                btnRefresh.style.display = 'none';
+            })
+            .catch(function (e) {
+                content.innerHTML = '<div class="empty"><span class="big">⚠️</span>' + esc(t('fail')) + '：' + esc(e.message) + '</div>';
+                statusEl.textContent = '';
+            });
+    }
+
+    function refresh() {
+        var token = getToken();
+        btnRefresh.disabled = true;
+        btnRefresh.textContent = t('refreshing');
+        fetch('/LocalMediaAssets/Actor/Refresh', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'MediaBrowser Token="' + token + '"' } : {})
+            },
+            body: JSON.stringify({ actorName: name })
+        }).catch(function () {}).then(function () {
+            setTimeout(function () {
+                btnRefresh.disabled = false;
+                btnRefresh.textContent = t('refresh');
+                load();
+            }, 3000);
+        });
+    }
+
+    document.getElementById('btnBack').addEventListener('click', function () {
+        if (history.length > 1) history.back();
+        else window.location.href = '/web/index.html';
+    });
+    btnRefresh.addEventListener('click', refresh);
+
+    load();
+})();
+</script>
+</body>
+</html>

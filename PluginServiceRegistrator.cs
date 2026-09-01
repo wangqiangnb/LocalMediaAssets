@@ -13,8 +13,12 @@ public sealed class PluginServiceRegistrator : IPluginServiceRegistrator
     /// <inheritdoc />
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
+        serviceCollection.AddSingleton<ActorIndex>();
         serviceCollection.AddSingleton<PersonImageIndexer>();
-        serviceCollection.AddSingleton<ActorAssetExporter>();
+        serviceCollection.AddSingleton<ActorSyncEngine>();
+        serviceCollection.AddSingleton<DeletedPhotoStore>();
+        serviceCollection.AddSingleton<IActorDatabase, ActorDatabase>();
+        serviceCollection.AddSingleton<ActorRefreshService>();
         serviceCollection.AddSingleton<UserSettingsManager>();
     }
 }

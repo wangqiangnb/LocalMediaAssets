@@ -16,5 +16,7 @@ jellyfin.path.txt
 *.user
 
 .ssh/
+
 # 发布产物（zip 等）
 publish/
+

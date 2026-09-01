@@ -16,7 +16,7 @@ namespace Jellyfin.Plugin.LocalMediaAssets.Tasks;
 /// </summary>
 public sealed class OrganizeActorAssetsTask : IScheduledTask
 {
-    private readonly ActorAssetExporter _exporter;
+    private readonly IActorDatabase _db;
     private readonly IServerConfigurationManager _serverConfigurationManager;
     private readonly ILogger<OrganizeActorAssetsTask> _logger;
 
@@ -24,11 +24,11 @@ public sealed class OrganizeActorAssetsTask : IScheduledTask
     /// Initializes a new instance of the <see cref="OrganizeActorAssetsTask"/> class.
     /// </summary>
     public OrganizeActorAssetsTask(
-        ActorAssetExporter exporter,
+        IActorDatabase db,
         IServerConfigurationManager serverConfigurationManager,
         ILogger<OrganizeActorAssetsTask> logger)
     {
-        _exporter = exporter;
+        _db = db;
         _serverConfigurationManager = serverConfigurationManager;
         _logger = logger;
     }
@@ -64,13 +64,27 @@ public sealed class OrganizeActorAssetsTask : IScheduledTask
     /// <inheritdoc />
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        // 默认每天凌晨 4 点执行一次；也可在「计划任务」中手动运行
+        // 仅「定时同步」模式注册每日自动触发（时间取 SyncHour，默认凌晨 4 点）；
+        // Auto（扫描后自动）与 Manual（仅手动）不注册定时触发，任务仍可手动运行。
+        // 注意：配置变更后需重启服务器或重新加载计划任务生效。
+        var syncMode = Plugin.Instance?.Configuration?.SyncMode ?? "Auto";
+        if (syncMode != "Scheduled")
+        {
+            return [];
+        }
+
+        var hour = Plugin.Instance?.Configuration?.SyncHour ?? 4;
+        if (hour < 0 || hour > 23)
+        {
+            hour = 4;
+        }
+
         return
         [
             new TaskTriggerInfo
             {
                 Type = TaskTriggerInfoType.DailyTrigger,
-                TimeOfDayTicks = new TimeSpan(4, 0, 0).Ticks
+                TimeOfDayTicks = new TimeSpan(hour, 0, 0).Ticks
             }
         ];
     }
@@ -85,22 +99,10 @@ public sealed class OrganizeActorAssetsTask : IScheduledTask
         }
 
         _logger.LogInformation("LocalMediaAssets：开始「整理本地演员信息和照片」");
-        _exporter.RebuildIndex(config);
-        progress.Report(3);
+        progress.Report(10);
 
-        if (config.ExportToActorLibrary && !string.IsNullOrWhiteSpace(config.ActorLibraryPath))
-        {
-            var libraryProgress = new Progress<double>(p => progress.Report(3 + p * 0.45));
-            await _exporter.ExportToActorLibraryAsync(config, libraryProgress, cancellationToken).ConfigureAwait(false);
-        }
-
-        var videoProgress = new Progress<double>(p => progress.Report(50 + p * 0.5));
-        await _exporter.ExportToVideosAsync(
-            config,
-            videoProgress,
-            cancellationToken,
-            includePhotos: config.ExportPhotosNextToVideo,
-            includeInfo: config.ExportInfoNextToVideo).ConfigureAwait(false);
+        // 统一同步引擎：从来源更新到主存储（去重/墓碑/默认保护/分发视频目录）
+        await Task.Run(() => _db.Sync(config, SyncTrigger.Scheduled), cancellationToken).ConfigureAwait(false);
 
         progress.Report(100);
         _logger.LogInformation("LocalMediaAssets：「整理本地演员信息和照片」完成");

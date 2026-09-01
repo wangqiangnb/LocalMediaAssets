@@ -25,7 +25,7 @@ namespace Jellyfin.Plugin.LocalMediaAssets.Api;
 [Route("LocalMediaAssets")]
 public sealed class StillsController : ControllerBase
 {
-    private const string ClientScriptResource = "Jellyfin.Plugin.LocalMediaAssets.web.localmediaassets-stills.js";
+    private const string ClientScriptResource = "Jellyfin.Plugin.LocalMediaAssets.web.localmediaassets.js";
     private const string ConfigPageResource = "Jellyfin.Plugin.LocalMediaAssets.web.configPage.html";
     private const string VerifyPageResource = "Jellyfin.Plugin.LocalMediaAssets.web.verifyPage.html";
 
@@ -75,38 +75,44 @@ public sealed class StillsController : ControllerBase
         }
 
         var config = Plugin.Instance?.Configuration;
-        var result = new StillsResult
-        {
-            ItemId = item.Id.ToString(),
-            Position = string.IsNullOrWhiteSpace(config?.StillsPosition) ? "AboveCast" : config.StillsPosition,
-            Lang = LanguageResolver.Resolve(config, _serverConfigurationManager.Configuration.UICulture)
-        };
 
-        if (config is null)
-        {
-            return result;
-        }
+        // 影视详情页优化为每用户设置；未设置时用内置推荐默认（真正的默认）
+        var showTrailers = true;
+        var showStills = true;
+        var position = "AboveCast";
+        var lang = "auto";
+        var maxStills = 20;
+        var stillsPerRow = 0;
+        var trailersPerRow = 0;
+        var includeVideoDirPhotos = false;
+        var includeArtworkImages = false;
+        var sectionOrder = "Overview,Stills,Trailers,Actors";
 
-        // 全局默认
-        var showTrailers = config.ShowTrailers;
-        var showStills = config.EnableStills;
-        var position = result.Position;
-        var lang = config.Language;
-        var maxStills = config.MaxStills > 0 ? config.MaxStills : 20;
-
-        // 应用当前用户的显示偏好（如有）：只允许应用调用者自己的偏好
+        // 应用当前用户的设置（仅允许应用调用者自己的偏好）
         var us = ResolveUserSettings(OwnOrEmptyUserId(userId));
         if (us is not null)
         {
             if (us.EnableStills.HasValue) showStills = us.EnableStills.Value;
             if (us.ShowTrailers.HasValue) showTrailers = us.ShowTrailers.Value;
-            if (!string.IsNullOrWhiteSpace(us.StillsPosition)) position = us.StillsPosition;
             if (!string.IsNullOrWhiteSpace(us.Language)) lang = us.Language;
             if (us.MaxStills.HasValue && us.MaxStills.Value > 0) maxStills = us.MaxStills.Value;
+            if (us.StillsPerRow.HasValue) stillsPerRow = us.StillsPerRow.Value;
+            if (us.TrailersPerRow.HasValue) trailersPerRow = us.TrailersPerRow.Value;
+            if (!string.IsNullOrWhiteSpace(us.SectionOrder)) sectionOrder = us.SectionOrder;
+            if (us.StillsIncludeVideoDirPhotos.HasValue) includeVideoDirPhotos = us.StillsIncludeVideoDirPhotos.Value;
+            if (us.StillsIncludeArtworkImages.HasValue) includeArtworkImages = us.StillsIncludeArtworkImages.Value;
         }
 
-        result.Position = position;
-        result.Lang = LanguageResolver.Resolve(new PluginConfiguration { Language = lang }, _serverConfigurationManager.Configuration.UICulture);
+        var result = new StillsResult
+        {
+            ItemId = item.Id.ToString(),
+            Enabled = showStills || showTrailers,
+            Position = position,
+            Lang = LanguageResolver.Resolve(new PluginConfiguration { Language = lang }, _serverConfigurationManager.Configuration.UICulture),
+            StillsPerRow = stillsPerRow,
+            TrailersPerRow = trailersPerRow,
+            SectionOrder = sectionOrder
+        };
 
         // 预览视频（预告片）：本地 trailers/ + 在线预告片
         if (showTrailers && item is IHasTrailers hasTrailers)
@@ -145,7 +151,7 @@ public sealed class StillsController : ControllerBase
             // 1) extrafanart 目录（首选剧照源）
             if (baseDir is not null)
             {
-                var stillsFolderName = PluginConfiguration.IsValidFolderName(config.StillsFolderName) ? config.StillsFolderName.Trim() : "extrafanart";
+                var stillsFolderName = config is not null && PluginConfiguration.IsValidFolderName(config.StillsFolderName) ? config.StillsFolderName.Trim() : "extrafanart";
                 var stillsDir = Path.Combine(baseDir, stillsFolderName);
                 if (Directory.Exists(stillsDir))
                 {
@@ -153,11 +159,11 @@ public sealed class StillsController : ControllerBase
                 }
             }
 
-            // 2) 视频目录顶层的所有照片（可选）
-            if (config.StillsIncludeVideoDirPhotos && baseDir is not null && Directory.Exists(baseDir))
+            // 2) 视频目录顶层的所有照片（可选，每用户）
+            if (includeVideoDirPhotos && baseDir is not null && Directory.Exists(baseDir))
             {
                 var topLevel = EnumerateImageFiles(baseDir);
-                if (!config.StillsIncludeArtworkImages)
+                if (!includeArtworkImages)
                 {
                     topLevel = topLevel.Where(f => !IsArtworkFile(f)).ToList();
                 }
@@ -238,16 +244,17 @@ public sealed class StillsController : ControllerBase
     /// <summary>
     /// 仅当请求的 userId 为空（匿名）或与当前登录用户一致时才返回；否则返回 null，
     /// 防止他人通过 userId 参数读取任意用户的显示偏好。
+    /// 用 Guid 语义比较（不区分 D/N 连字符格式）。
     /// </summary>
     private string? OwnOrEmptyUserId(string? requestedUserId)
     {
-        if (string.IsNullOrWhiteSpace(requestedUserId))
+        if (string.IsNullOrWhiteSpace(requestedUserId) || !Guid.TryParse(requestedUserId, out var requestedGuid))
         {
             return null;
         }
 
         var claim = User.FindFirst("Jellyfin-UserId");
-        if (claim is null || !string.Equals(claim.Value, requestedUserId, StringComparison.OrdinalIgnoreCase))
+        if (claim is null || !Guid.TryParse(claim.Value, out var claimGuid) || claimGuid != requestedGuid)
         {
             return null;
         }
@@ -304,6 +311,8 @@ public sealed class StillsController : ControllerBase
             {
                 // nosniff：防止 SVG 等文本型图片被当作可执行内容
                 Response.Headers["X-Content-Type-Options"] = "nosniff";
+                // 图片允许浏览器缓存 10 分钟（文件一般不变；换图后 10 分钟内最多旧图）
+                Response.Headers.CacheControl = "private, max-age=600";
                 return PhysicalFile(file, GetMimeType(safeName));
             }
         }
@@ -312,9 +321,9 @@ public sealed class StillsController : ControllerBase
     }
 
     /// <summary>
-    /// 返回剧照展示客户端脚本（匿名，供 index.html 注入）。
+    /// 返回详情页优化客户端脚本（匿名，供 index.html 注入；剧照+演员卡片合并版）。
     /// </summary>
-    [HttpGet("stillsJs")]
+    [HttpGet("webJs")]
     [AllowAnonymous]
     public ActionResult<string> GetClientScript()
     {
@@ -428,42 +437,16 @@ public sealed class StillsController : ControllerBase
     }
 
     /// <summary>
-    /// 返回插件存储库清单：让 Jellyfin 的「存储库」能找到本插件，
-    /// 从而使插件详情页正常显示「设置」按钮（原生配置入口）。
+    /// 精确移除注入在 jellyfin-web/index.html 中的插件脚本行（管理员）。
+    /// 只删除本插件的一行带标记的 script，不影响其他插件对 index.html 的修改。
     /// </summary>
-    [HttpGet("repository.json")]
-    [AllowAnonymous]
-    public ActionResult<IEnumerable<object>> GetRepository()
+    [HttpPost("Web/Restore")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    public IActionResult RestoreWeb()
     {
-        Response.Headers.CacheControl = "no-store";
-
-        // 版本号动态生成，避免与程序集/服务器版本脱节：
-        // Version = 插件程序集版本；TargetAbi = 当前 Jellyfin 服务器版本
-        var pluginVersion = typeof(StillsController).Assembly.GetName().Version?.ToString() ?? "1.0.0.0";
-        var targetAbi = _applicationHost.ApplicationVersion.ToString();
-
-        var manifest = new[]
-        {
-            new
-            {
-                Name = "LocalMediaAssets",
-                Id = "8f2a9d0e-3c4b-4a5f-9e6d-1b2c3d4e5f60",
-                Description = "本地化媒体素材：演员照片/简介跟随媒体文件，详情页展示预览图与预告片",
-                Overview = "演员照片与简介优先从视频目录与演员库读取，详情页展示预览图与预告片；提供「整理本地演员信息和照片」计划任务与 NFO 补写，换机器无需重新刮削。",
-                Owner = "local",
-                Category = "Metadata",
-                Versions = new[]
-                {
-                    new
-                    {
-                        Version = pluginVersion,
-                        TargetAbi = targetAbi,
-                        Changelog = "自动同步版本号"
-                    }
-                }
-            }
-        };
-        return Ok(manifest);
+        var webPath = _serverConfigurationManager.ApplicationPaths.WebPath;
+        var restored = WebPatch.Restore(Path.Combine(webPath, "index.html"), _logger);
+        return restored ? NoContent() : NotFound();
     }
 
     private string ReadResource(string resourceName, out bool found)
@@ -585,11 +568,23 @@ public sealed class StillsResult
     /// <summary>条目 ID。</summary>
     public string? ItemId { get; set; }
 
+    /// <summary>本功能对当前用户是否启用（剧照或预告片任一开启）；前端据此停止无意义轮询。</summary>
+    public bool Enabled { get; set; }
+
     /// <summary>剧照区块位置（Top / AboveOverview / AboveCast / Bottom）。</summary>
     public string? Position { get; set; }
 
     /// <summary>界面语言（zh / en）。</summary>
     public string? Lang { get; set; }
+
+    /// <summary>剧照每行数量（0=自适应）。</summary>
+    public int StillsPerRow { get; set; }
+
+    /// <summary>预告片每行数量（0=自适应）。</summary>
+    public int TrailersPerRow { get; set; }
+
+    /// <summary>详情页区块顺序（Overview/Stills/Actors 排列）。</summary>
+    public string? SectionOrder { get; set; }
 
     /// <summary>预告片列表（本地 + 远程）。</summary>
     public List<TrailerItem> Trailers { get; set; } = [];

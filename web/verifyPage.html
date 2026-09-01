@@ -19,7 +19,7 @@
 <code>…#/details?id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>，把 <code>id=</code> 后面那串复制到本页
 <code>?itemId=</code> 参数后，例如 <code>/LocalMediaAssets/verify?itemId=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code>。</p>
 <p id="status" style="color:#ffa726;font-weight:600;">请先补充 itemId 参数。</p>
-<p>正常结果：下方红色框【模拟演员区】<b>上方</b>出现「预览图与视频」区 → 说明「脚本 → API → 渲染」整条链路正常。</p>
+<p>正常结果：下方红色框【模拟演员区】<b>上方</b>出现「预览图片和剧照」区 → 说明「脚本 → API → 渲染」整条链路正常。</p>
 <div id="castCollapsible">【模拟演员区】</div>
 <script>
   var params = new URLSearchParams(location.search);
@@ -30,6 +30,6 @@
     document.getElementById('status').textContent = '请在地址后加 ?itemId=<你的条目ID> 再刷新本页。';
   }
 </script>
-<script src="/LocalMediaAssets/stillsJs"></script>
+<script src="/LocalMediaAssets/webJs"></script>
 </body>
 </html>

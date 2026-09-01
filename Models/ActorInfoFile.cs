@@ -12,4 +12,7 @@ public sealed class ActorInfoFile
 
     [JsonPropertyName("overview")]
     public string? Overview { get; set; }
+
+    [JsonPropertyName("defaultPhoto")]
+    public string? DefaultPhoto { get; set; }
 }

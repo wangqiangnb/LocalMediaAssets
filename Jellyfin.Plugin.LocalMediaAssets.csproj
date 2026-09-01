@@ -4,8 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.LocalMediaAssets</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.LocalMediaAssets</AssemblyName>
-    <Version>0.9.0.0</Version>
-    <FileVersion>0.9.0.0</FileVersion>
+    <Version>0.9.1.1</Version>
+    <FileVersion>0.9.1.1</FileVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -21,7 +21,8 @@
     <EmbeddedResource Include="ConfigurationPage\configPage.html" />
     <EmbeddedResource Include="web\configPage.html" />
     <EmbeddedResource Include="web\verifyPage.html" />
-    <EmbeddedResource Include="web\localmediaassets-stills.js" />
+    <EmbeddedResource Include="web\localmediaassets.js" />
+    <EmbeddedResource Include="web\actor-detail.html" />
   </ItemGroup>
 
   <ItemGroup>

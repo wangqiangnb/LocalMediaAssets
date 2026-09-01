@@ -1,4 +1,4 @@
-﻿# 编译 Jellyfin.Plugin.LocalMediaAssets
+# 编译 Jellyfin.Plugin.LocalMediaAssets
 $ErrorActionPreference = 'Stop'
 
 $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
@@ -9,7 +9,7 @@ if (-not (Test-Path $dotnet)) { throw "未找到 dotnet: $dotnet" }
 # 读取本机 Jellyfin 安装目录（jellyfin.path.txt 不入库，避免泄露个人路径）
 $pathFile = Join-Path $scriptDir 'jellyfin.path.txt'
 if (Test-Path $pathFile) {
-    $jfDir = (Get-Content $pathFile -Raw).Trim()
+    $jfDir = ((Get-Content $pathFile -Raw) -split "`r?`n" | Where-Object { $_.Trim() } | Select-Object -First 1).Trim()
     if ($jfDir) { $env:JellyfinInstallDir = $jfDir }
 }
 
